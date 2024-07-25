@@ -26,7 +26,7 @@ if __name__ == "__main__":
     logging.info("Starting metrics collector application")
     import uvicorn
     try:
-        uvicorn.run(app, host='localhost', port=8000)
+        uvicorn.run('main:app', host='localhost', port=8000)
         logging.info("Started Prometheus HTTP server on port 8000")
     except Exception as e:
         logging.critical(f"Critical error: {e}")
