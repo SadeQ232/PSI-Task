@@ -9,22 +9,25 @@ from app.logging_setup import setup_logging
 
 setup_logging()
 
-app = FastAPI()
+app = FastAPI(debug=False, description='Monitoring Script for Windows or Linux OS', docs_url=None)
+
 
 @app.get('/metrics')
 async def metrics(request: Request):
     logging.info(f"Received request for /metrics from {request.client.host}")
     collect_metrics()
-    
+
     if platform.system() == 'Windows':
         collect_windows_specific_metrics()
 
     data = generate_latest(registry)
     return PlainTextResponse(data, media_type=CONTENT_TYPE_LATEST)
 
+
 if __name__ == "__main__":
     logging.info("Starting metrics collector application")
     import uvicorn
+
     try:
         uvicorn.run('main:app', host='localhost', port=8000)
         logging.info("Started Prometheus HTTP server on port 8000")
