@@ -1,6 +1,6 @@
-# Monitoring Script
+# Monitoring Script for windows or Linux OS
 
-This project collects system metrics and exposes them for Prometheus using FastAPI.
+This project collects system metrics windows or linux and exposes them for Prometheus using FastAPI.
 
 ## Setup
 
