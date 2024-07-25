@@ -1,8 +1,8 @@
+import platform
 import psutil
 import logging
 from prometheus_client import Gauge, CollectorRegistry
-from .utils import sanitize_metric_name
-
+from .utils import sanitize_linux_metric_name, sanitize_windows_metric_name
 
 registry = CollectorRegistry()
 
@@ -15,7 +15,13 @@ total_memory_gauge = Gauge('total_memory_usage', 'Total memory usage percentage'
 
 swap_gauge = Gauge('swap_usage', 'Swap usage percentage', registry=registry)
 
-disk_gauges = {sanitize_metric_name(p.mountpoint): Gauge(f'disk_usage_{sanitize_metric_name(p.mountpoint)}', f'Disk usage for {p.mountpoint}', registry=registry) for p in psutil.disk_partitions()}
+if platform.system() == 'Windows':
+    # For Windows, sanitize using Windows specific sanitizer
+    disk_gauges = {sanitize_windows_metric_name(p.mountpoint): Gauge(f'disk_usage_{sanitize_windows_metric_name(p.mountpoint)}', f'Disk usage for {p.mountpoint}', registry=registry) for p in psutil.disk_partitions()}
+else:
+    # For Linux, sanitize using Linux specific sanitizer
+    disk_gauges = {sanitize_linux_metric_name(p.mountpoint): Gauge(f'disk_usage_{sanitize_linux_metric_name(p.mountpoint)}', f'Disk usage for {p.mountpoint}', registry=registry) for p in psutil.disk_partitions()}
+
 total_disk_gauge = Gauge('total_disk_usage', 'Total disk usage percentage', registry=registry)
 total_disk_size_gauge = Gauge('total_disk_size', 'Total disk size in bytes', registry=registry)
 
@@ -60,7 +66,11 @@ def collect_metrics():
             usage = psutil.disk_usage(p.mountpoint)
             total_disk_size += usage.total
             total_disk_usage += usage.percent
-            disk_gauges[sanitize_metric_name(p.mountpoint)].set(usage.percent)
+            # Choose the appropriate metric name sanitizer
+            if platform.system() == 'Windows':
+                disk_gauges[sanitize_windows_metric_name(p.mountpoint)].set(usage.percent)
+            else:
+                disk_gauges[sanitize_linux_metric_name(p.mountpoint)].set(usage.percent)
         
         # Set total disk size and usage
         total_disk_size_gauge.set(total_disk_size)
@@ -98,3 +108,22 @@ def collect_metrics():
         
     except Exception as e:
         logging.error(f"Error collecting metrics: {e}")
+
+def collect_windows_specific_metrics():
+    # Contoh: Informasi baterai (jika ada)
+    if hasattr(psutil, "sensors_battery"):
+        battery = psutil.sensors_battery()
+        if battery:
+            battery_percentage = battery.percent
+            logging.info(f'Battery percentage: {battery_percentage}%')
+            # Anda bisa membuat Gauge untuk ini jika ingin memonitor
+            # battery_gauge.set(battery_percentage)
+    
+    # Informasi sesi pengguna (bisa digunakan untuk memantau sesi RDP, dll)
+    users = psutil.users()
+    for user in users:
+        logging.info(f'User session: {user.name}, Terminal: {user.terminal}, Host: {user.host}, Started: {user.started}')
+
+# Panggil fungsi ini dalam `collect_metrics` jika sistem berjalan di Windows
+if platform.system() == 'Windows':
+    collect_windows_specific_metrics()
