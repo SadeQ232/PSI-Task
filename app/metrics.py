@@ -9,6 +9,7 @@ registry = CollectorRegistry()
 # Create Prometheus Gauges
 cpu_gauges = [Gauge(f'cpu_usage_{i}', f'CPU usage for core {i}', registry=registry) for i in range(psutil.cpu_count())]
 total_cpu_gauge = Gauge('total_cpu_usage', 'Total CPU usage percentage', registry=registry)
+cpu_core_count_gauge = Gauge('cpu_core_count', 'Number of CPU cores', registry=registry)
 
 memory_gauge = Gauge('memory_usage', 'Memory usage percentage', registry=registry)
 total_memory_gauge = Gauge('total_memory_usage', 'Total memory usage percentage', registry=registry)
@@ -51,6 +52,7 @@ def collect_metrics():
         for i, usage in enumerate(cpu_usage):
             cpu_gauges[i].set(usage)
         total_cpu_gauge.set(total_cpu_usage)
+        cpu_core_count_gauge.set(len(cpu_usage))  # Set the number of CPU cores
         
         # Collect Memory metrics
         memory_info = psutil.virtual_memory()
