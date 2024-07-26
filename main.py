@@ -9,7 +9,7 @@ from app.logging_setup import setup_logging
 
 setup_logging()
 
-app = FastAPI(debug=False, description='Monitoring Script for Windows or Linux OS', docs_url=None)
+app = FastAPI(title='septian_exporter', version='0.1.0', debug=False, description='Monitoring Script for Windows or Linux OS using python FastAPI', docs_url=None)
 
 
 @app.get('/')
