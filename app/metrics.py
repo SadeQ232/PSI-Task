@@ -13,6 +13,7 @@ cpu_core_count_gauge = Gauge('cpu_core_count', 'Number of CPU cores', registry=r
 
 memory_gauge = Gauge('memory_usage', 'Memory usage percentage', registry=registry)
 total_memory_gauge = Gauge('total_memory_usage', 'Total memory usage percentage', registry=registry)
+total_memory_installed_gauge = Gauge('total_memory_installed', 'Total installed memory in bytes', registry=registry)
 
 swap_gauge = Gauge('swap_usage', 'Swap usage percentage', registry=registry)
 
@@ -59,6 +60,7 @@ def collect_metrics():
         swap_info = psutil.swap_memory()
         memory_gauge.set(memory_info.percent)
         total_memory_gauge.set(memory_info.percent)
+        total_memory_installed_gauge.set(memory_info.total)
         swap_gauge.set(swap_info.percent)
 
         # Collect Disk metrics
@@ -99,7 +101,7 @@ def collect_metrics():
 
         # Log collected metrics
         logging.info(f'Collected CPU metrics: {cpu_usage}, Total CPU usage: {total_cpu_usage}%')
-        logging.info(f'Collected Memory metrics: {memory_info.percent}% used, Total Memory usage: {memory_info.percent}%')
+        logging.info(f'Collected Memory metrics: {memory_info.percent}% used, Total Memory usage: {memory_info.percent}%, Total Installed Memory: {memory_info.total} bytes')
         logging.info(f'Collected Swap metrics: {swap_info.percent}% used')
         for p in psutil.disk_partitions():
             usage = psutil.disk_usage(p.mountpoint)
