@@ -18,10 +18,8 @@ total_memory_installed_gauge = Gauge('total_memory_installed', 'Total installed 
 swap_gauge = Gauge('swap_usage', 'Swap usage percentage', registry=registry)
 
 if platform.system() == 'Windows':
-    # For Windows, sanitize using Windows specific sanitizer
     disk_gauges = {sanitize_windows_metric_name(p.mountpoint): Gauge(f'disk_usage_{sanitize_windows_metric_name(p.mountpoint)}', f'Disk usage for {p.mountpoint}', registry=registry) for p in psutil.disk_partitions()}
 else:
-    # For Linux, sanitize using Linux specific sanitizer
     disk_gauges = {sanitize_linux_metric_name(p.mountpoint): Gauge(f'disk_usage_{sanitize_linux_metric_name(p.mountpoint)}', f'Disk usage for {p.mountpoint}', registry=registry) for p in psutil.disk_partitions()}
 
 total_disk_gauge = Gauge('total_disk_usage', 'Total disk usage percentage', registry=registry)
@@ -67,19 +65,17 @@ def collect_metrics():
         total_disk_size = 0
         total_disk_usage = 0
         for p in psutil.disk_partitions():
-            usage = psutil.disk_usage(p.mountpoint)
-            total_disk_size += usage.total
-            total_disk_usage += usage.percent
-            # Choose the appropriate metric name sanitizer
-            if platform.system() == 'Windows':
-                disk_gauges[sanitize_windows_metric_name(p.mountpoint)].set(usage.percent)
-            else:
-                disk_gauges[sanitize_linux_metric_name(p.mountpoint)].set(usage.percent)
+            if p.mountpoint == '/':  # Focus only on the root mount point
+                usage = psutil.disk_usage(p.mountpoint)
+                total_disk_size = usage.total
+                total_disk_usage = usage.percent
+                if platform.system() == 'Windows':
+                    disk_gauges[sanitize_windows_metric_name(p.mountpoint)].set(usage.percent)
+                else:
+                    disk_gauges[sanitize_linux_metric_name(p.mountpoint)].set(usage.percent)
         
-        # Set total disk size and usage
         total_disk_size_gauge.set(total_disk_size)
-        total_disk_usage_percentage = (total_disk_usage / len(psutil.disk_partitions())) if psutil.disk_partitions() else 0
-        total_disk_usage_percentage = min(total_disk_usage_percentage, 100)  # Ensure it does not exceed 100%
+        total_disk_usage_percentage = total_disk_usage
         total_disk_gauge.set(total_disk_usage_percentage)
 
         io_counters = psutil.disk_io_counters()
@@ -103,9 +99,7 @@ def collect_metrics():
         logging.info(f'Collected CPU metrics: {cpu_usage}, Total CPU usage: {total_cpu_usage}%')
         logging.info(f'Collected Memory metrics: {memory_info.percent}% used, Total Memory usage: {memory_info.percent}%, Total Installed Memory: {memory_info.total} bytes')
         logging.info(f'Collected Swap metrics: {swap_info.percent}% used')
-        for p in psutil.disk_partitions():
-            usage = psutil.disk_usage(p.mountpoint)
-            logging.info(f'Collected Disk metrics for {p.mountpoint}: {usage.percent}% used')
+        logging.info(f'Collected Disk metrics for /: {total_disk_usage}% used')
         logging.info(f'Total Disk Size: {total_disk_size} bytes, Total Disk Usage: {total_disk_usage_percentage}% used')
         logging.info(f'Collected Disk I/O metrics: read {io_counters.read_bytes} bytes, wrote {io_counters.write_bytes} bytes')
         logging.info(f'Collected Network metrics: {net_io.bytes_sent} bytes sent, {net_io.bytes_recv} bytes received')
@@ -114,20 +108,15 @@ def collect_metrics():
         logging.error(f"Error collecting metrics: {e}")
 
 def collect_windows_specific_metrics():
-    # Contoh: Informasi baterai (jika ada)
     if hasattr(psutil, "sensors_battery"):
         battery = psutil.sensors_battery()
         if battery:
             battery_percentage = battery.percent
             logging.info(f'Battery percentage: {battery_percentage}%')
-            # Anda bisa membuat Gauge untuk ini jika ingin memonitor
-            # battery_gauge.set(battery_percentage)
     
-    # Informasi sesi pengguna (bisa digunakan untuk memantau sesi RDP, dll)
     users = psutil.users()
     for user in users:
         logging.info(f'User session: {user.name}, Terminal: {user.terminal}, Host: {user.host}, Started: {user.started}')
 
-# Panggil fungsi ini dalam `collect_metrics` jika sistem berjalan di Windows
 if platform.system() == 'Windows':
     collect_windows_specific_metrics()
