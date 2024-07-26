@@ -12,6 +12,11 @@ setup_logging()
 app = FastAPI(debug=False, description='Monitoring Script for Windows or Linux OS', docs_url=None)
 
 
+@app.get('/')
+async def health_check():
+    return {"Monitoring Script for Windows or Linux OS": "Running"}
+
+
 @app.get('/metrics')
 async def metrics(request: Request):
     logging.info(f"Received request for /metrics from {request.client.host}")
